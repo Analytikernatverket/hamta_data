@@ -1,0 +1,25 @@
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # Kör dagligen kl 02:00 UTC
+  workflow_dispatch:     # Möjliggör manuell körning
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork
+        uses: actions/checkout@v3
+
+      - name: Add upstream repository
+        run: git remote add upstream https://github.com/Region-Dalarna/hamta_data.git
+
+      - name: Fetch and merge upstream changes
+        run: |
+          git fetch upstream
+          git checkout main
+          git merge upstream/main --allow-unrelated-histories
+
+      - name: Push changes to fork
+        run: git push origin main
