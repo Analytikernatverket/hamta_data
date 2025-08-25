@@ -1,4 +1,4 @@
-source("G:/skript/peter/ftg_arbst_api_scb_func.R")
+source("https://raw.githubusercontent.com/Analytikernatverket/hamta_data/refs/heads/main/ftg_arbst_api_scb_func.R")
 
 scb_hamta_foretag <- function(
     kommunkoder = NULL,                          # kommunkoder för de kommuner man vill ha data för, en eller flera i en vektor, tex: c("2080", "2085")
@@ -15,17 +15,17 @@ scb_hamta_foretag <- function(
 ) {
   total_start <- Sys.time()
   library(tidyverse); library(glue)
-  
+
   # --- API-endpoints
   base_url <- "https://privateapi.scb.se/nv0101/v1/sokpavar/api/"
   rakna_url <- paste0(base_url, "je/raknaforetag/")
   hamta_url <- paste0(base_url, "je/hamtaforetag/")
   kategorier_url <- paste0(base_url, "je/kategoriermedkodtabeller")
   max_rader <- 2000
-  
+
   # --- cert och rate-limit env
   .api_calls <- new.env(); .api_calls$timestamps <- numeric(0)
-  
+
   # --- progress
   total_kombinationer <- length(kommunkoder)
   if (visa_progress) {
@@ -33,10 +33,10 @@ scb_hamta_foretag <- function(
   } else {
     pb <- list(tick = function(...) NULL)
   }
-  
+
   # --- resultat
   resultat <- list()
-  
+
   resultat_lagg_till <- local({
     .res_idx <- 0L
     function(df, label = NULL) {
@@ -51,12 +51,12 @@ scb_hamta_foretag <- function(
       invisible(NULL)
     }
   })
-  
-  
+
+
   # --- helpers lokalt
   rakna <- function(payload) rakna_api(rakna_url, payload, cert_thumb, .api_calls, visa_progress, visa_meddelanden_konsol)
   hamta <- function(payload) hamta_api(hamta_url, payload, cert_thumb, .api_calls, visa_progress, visa_meddelanden_konsol)
-  
+
   skapa_payload <- function(kom = NULL, oms = NULL, bransch = NULL) {
     kat <- list()
     if (!is.null(kom))       kat <- append(kat, list(list(Kategori = "SätesKommun",         Kod = list(kom))))
@@ -69,7 +69,7 @@ scb_hamta_foretag <- function(
     if (length(grundfilter) > 0) payload$variabler <- grundfilter
     payload
   }
-  
+
   hamta_kategorier <- function() {
     if (visa_progress && visa_meddelanden_konsol) message("📋 Hämtar tillgängliga kategorier för automatisk uppdelning...")
     resp <- httr::GET(url = kategorier_url, config = httr::config(sslcert = paste0(cert_info$store, "\\MY\\", cert_thumb), sslcerttype = "Schannel"))
@@ -85,15 +85,15 @@ scb_hamta_foretag <- function(
     if (visa_progress && visa_meddelanden_konsol) message(sprintf("✅ Hämtade %d omsättningsklasser och %d branscher", length(oms_koder), length(bransch_koder)))
     list(oms = oms_koder, bransch = bransch_koder)
   }
-  
+
   auto_kategorier <- NULL
-  
+
   # --- loop per kommun
   for (kom in kommunkoder %||% list(NULL)) {
     kommun_start <- Sys.time()
     pb$tick(tokens = list(message = kom))
     if (visa_progress && visa_meddelanden_konsol) message(sprintf("🔍 Kommun %s: startar hämtning", kom))
-    
+
     payload_kom <- skapa_payload(kom = kom)
     n_kom <- rakna(payload_kom)
     if (!is.na(n_kom) && n_kom <= max_rader) {
@@ -108,24 +108,24 @@ scb_hamta_foretag <- function(
         next
       }
     }
-    
+
     if (is.null(auto_kategorier)) auto_kategorier <- hamta_kategorier()
     aktuell_oms      <- oms_klass   %||% auto_kategorier$oms
     aktuell_bransch  <- branscher   %||% auto_kategorier$bransch
-    
+
     # Steg 1: försök per oms-grupper
     aktuell_oms_lista <- map(seq_along(aktuell_oms), ~ aktuell_oms[.x:length(aktuell_oms)])
     lyckade_oms <- character(0)
     testade_oms <- character(0)
-    
+
     repeat {
       hittade <- FALSE
       aktuell_oms_lista <- map(aktuell_oms_lista, ~ setdiff(.x, lyckade_oms)) %>% keep(~ length(.x) > 0)
-      
+
       for (oms_grupp in aktuell_oms_lista) {
         if (visa_meddelanden_konsol) message(glue("Testar OMS-grupp: {paste(oms_grupp, collapse=', ')}"))
         if (all(oms_grupp %in% lyckade_oms)) next
-        
+
         if (length(oms_grupp) == 2) {
           for (oms_kod in oms_grupp) {
             if (oms_kod %in% lyckade_oms || oms_kod %in% testade_oms) next
@@ -158,10 +158,10 @@ scb_hamta_foretag <- function(
       }
       if (!hittade) break
     }
-    
+
     # Steg 2: bryt upp i branscher för OMS som är kvar
     koder_att_bryta_upp <- setdiff(aktuell_oms, lyckade_oms)
-    
+
     dela_upp_branschgrupp <- function(bransch_koder, kom, oms_kod, max_rader, lyckade_branscher) {
       if (!length(bransch_koder)) return(list(lyckade_branscher = lyckade_branscher, hittade = FALSE))
       n <- rakna(skapa_payload(kom = kom, oms = oms_kod, bransch = bransch_koder))
@@ -186,14 +186,14 @@ scb_hamta_foretag <- function(
       }
       list(lyckade_branscher = lyckade_branscher, hittade = FALSE)
     }
-    
+
     for (oms_kod in koder_att_bryta_upp) {
       if (visa_meddelanden_konsol) message(glue("\n🔍 Delar upp OMS-kod {oms_kod} i branscher...\n"))
       bransch_grupper <- split(aktuell_bransch, cut(seq_along(aktuell_bransch), breaks = 5, labels = FALSE))
       aktuell_bransch_lista <- map(seq_along(bransch_grupper), function(i) flatten_chr(bransch_grupper[i:length(bransch_grupper)])) %>%
         set_names(map_chr(seq_along(bransch_grupper), function(i) { alla <- flatten_chr(bransch_grupper[i:length(bransch_grupper)]); sprintf("%s-%s", min(alla), max(alla)) }))
       lyckade_branscher <- character(0)
-      
+
       repeat {
         hittade <- FALSE
         aktuell_bransch_lista <- map(aktuell_bransch_lista, ~ setdiff(.x, lyckade_branscher)) %>% keep(~ length(.x) > 0)
@@ -234,14 +234,14 @@ scb_hamta_foretag <- function(
           aktuell_bransch_lista <- aktuell_bransch_lista %>% imap(~ .x) %>% set_names(map_chr(., ~ sprintf("%s-%s", min(.x), max(.x))))
       }
     }
-    
+
     if (visa_resultat_meddelanden_konsol) {
       kommun_namn <- api_kommunnamn_fran_resultat(resultat, kom, "Säteskommun")
       antal <- api_summa_for_kom(resultat, kom)
       message(glue("🏁 {kommun_namn}: hämtade {scb_format(antal)} företag på {scb_sec(kommun_start)} sekunder"))
     }
   } # kommunloop
-  
+
   retur_df <- resultat %>% list_rbind()
   if (visa_resultat_meddelanden_konsol) {
     kommun_txt <- if (n_distinct(retur_df$`Säteskommun`) > 1) "kommuner" else "kommun"
@@ -263,25 +263,25 @@ scb_hamta_arbetsstallen <- function(
 ) {
   total_start <- Sys.time()
   library(tidyverse); library(glue)
-  
+
   base_url <- "https://privateapi.scb.se/nv0101/v1/sokpavar/api/"
   rakna_url <- paste0(base_url, "ae/raknaarbetsstallen/")
   hamta_url <- paste0(base_url, "ae/hamtaarbetsstallen/")
   kategorier_url <- paste0(base_url, "ae/kategoriermedkodtabeller")
   max_rader <- 2000
-  
+
   .api_calls <- new.env(); .api_calls$timestamps <- numeric(0)
-  
+
   total_kombinationer <- length(kommunkoder)
   if (visa_progress) {
     pb <- progress::progress_bar$new(total = total_kombinationer, format = ":current/:total [:bar] :percent :message", clear = FALSE)
   } else {
     pb <- list(tick = function(...) NULL)
   }
-  
+
   # --- resultat
   resultat <- list()
-  
+
   resultat_lagg_till <- local({
     .res_idx <- 0L
     function(df, label = NULL) {
@@ -296,10 +296,10 @@ scb_hamta_arbetsstallen <- function(
       invisible(NULL)
     }
   })
-  
+
   rakna <- function(payload) rakna_api(rakna_url, payload, cert_thumb, .api_calls, visa_progress, visa_meddelanden_konsol)
   hamta <- function(payload) hamta_api(hamta_url, payload, cert_thumb, .api_calls, visa_progress, visa_meddelanden_konsol)
-  
+
   skapa_payload <- function(kom = NULL, anst = NULL, bransch = NULL) {
     kat <- list()
     if (!is.null(kom))     kat <- append(kat, list(list(Kategori = "Kommun",               Kod = list(kom))))
@@ -309,7 +309,7 @@ scb_hamta_arbetsstallen <- function(
     if (length(grundfilter) > 0) payload$variabler <- grundfilter
     payload
   }
-  
+
   hamta_kategorier <- function() {
     if (visa_progress && visa_meddelanden_konsol) message("📋 Hämtar tillgängliga kategorier för automatisk uppdelning...")
     resp <- httr::GET(url = kategorier_url, config = httr::config(sslcert = paste0(cert_info$store, "\\MY\\", cert_thumb), sslcerttype = "Schannel"))
@@ -325,18 +325,18 @@ scb_hamta_arbetsstallen <- function(
     if (visa_progress && visa_meddelanden_konsol) message(sprintf("✅ Hämtade %d anställda-grupper och %d branscher", length(anst_koder), length(bransch_koder)))
     list(anst = anst_koder, bransch = bransch_koder)
   }
-  
+
   auto_kategorier <- NULL
-  
+
   for (kom in kommunkoder %||% list(NULL)) {
     kommun_start <- Sys.time()
     pb$tick(tokens = list(message = kom))
     if (visa_progress && visa_meddelanden_konsol) message(sprintf("🔍 Kommun %s: startar hämtning", kom))
-    
+
     if (is.null(auto_kategorier)) auto_kategorier <- hamta_kategorier()
     aktuell_anst     <- anstallda %||% auto_kategorier$anst
     aktuell_bransch  <- branscher %||% auto_kategorier$bransch
-    
+
     # Kan vi hämta allt i kommunen direkt?
     payload_kom <- skapa_payload(kom = kom)
     n_kom <- rakna(payload_kom)
@@ -352,18 +352,18 @@ scb_hamta_arbetsstallen <- function(
         next
       }
     }
-    
+
     # Steg 1: försök per anställda-grupper
     aktuell_anst_lista <- map(seq_along(aktuell_anst), ~ aktuell_anst[.x:length(aktuell_anst)])
     lyckade_anst <- character(0)
-    
+
     repeat {
       hittade <- FALSE
       aktuell_anst_lista <- map(aktuell_anst_lista, ~ setdiff(.x, lyckade_anst)) %>% keep(~ length(.x) > 0)
-      
+
       for (anst_grupp in aktuell_anst_lista) {
         if (all(anst_grupp %in% lyckade_anst)) next
-        
+
         if (length(anst_grupp) == 2) {
           for (anst_kod in anst_grupp) {
             if (anst_kod %in% lyckade_anst) next
@@ -395,10 +395,10 @@ scb_hamta_arbetsstallen <- function(
       }
       if (!hittade) break
     }
-    
+
     # Steg 2: bryt upp i branscher
     koder_att_bryta_upp <- setdiff(aktuell_anst, lyckade_anst)
-    
+
     dela_upp_branschgrupp <- function(bransch_koder, kom, anst_kod, max_rader, lyckade_branscher) {
       if (!length(bransch_koder)) return(list(lyckade_branscher = lyckade_branscher, hittade = FALSE))
       n <- rakna(skapa_payload(kom = kom, anst = anst_kod, bransch = bransch_koder))
@@ -423,14 +423,14 @@ scb_hamta_arbetsstallen <- function(
       }
       list(lyckade_branscher = lyckade_branscher, hittade = FALSE)
     }
-    
+
     for (anst_kod in koder_att_bryta_upp) {
       if (visa_meddelanden_konsol) message(glue("\n🔍 Delar upp anst-kod {anst_kod} i branscher...\n"))
       bransch_grupper <- split(aktuell_bransch, cut(seq_along(aktuell_bransch), breaks = 5, labels = FALSE))
       aktuell_bransch_lista <- map(seq_along(bransch_grupper), function(i) flatten_chr(bransch_grupper[i:length(bransch_grupper)])) %>%
         set_names(map_chr(seq_along(bransch_grupper), function(i) { alla <- flatten_chr(bransch_grupper[i:length(bransch_grupper)]); sprintf("%s-%s", min(alla), max(alla)) }))
       lyckade_branscher <- character(0)
-      
+
       repeat {
         hittade <- FALSE
         aktuell_bransch_lista <- map(aktuell_bransch_lista, ~ setdiff(.x, lyckade_branscher)) %>% keep(~ length(.x) > 0)
@@ -471,14 +471,14 @@ scb_hamta_arbetsstallen <- function(
           aktuell_bransch_lista <- aktuell_bransch_lista %>% imap(~ .x) %>% set_names(map_chr(., ~ sprintf("%s-%s", min(.x), max(.x))))
       }
     }
-    
+
     if (visa_resultat_meddelanden_konsol) {
       kommun_namn <- api_kommunnamn_fran_resultat(resultat, kom, "Kommun") %||% kom
       antal <- api_summa_for_kom(resultat, kom)
       message(glue("🏁 {kommun_namn}: hämtade {scb_format(antal)} arbetsställen på {scb_sec(kommun_start)} sekunder"))
     }
   } # kommunloop
-  
+
   retur_df <- resultat %>% list_rbind()
   if (visa_resultat_meddelanden_konsol) {
     kommun_txt <- if (n_distinct(retur_df$Kommun) > 1) "kommuner" else "kommun"
