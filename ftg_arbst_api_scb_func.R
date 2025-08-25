@@ -239,6 +239,7 @@ scb_rakna_foretag_i_kommuner <- function(
     returnera_till_konsol = TRUE,
     returnera_df = FALSE
 ){
+  source("https://raw.githubusercontent.com/Region-Dalarna/funktioner/main/func_API.R", encoding = "utf-8", echo = FALSE)
   base_url  <- "https://privateapi.scb.se/nv0101/v1/sokpavar/api/"
   rakna_url <- paste0(base_url, "je/raknaforetag/")
   .api_calls <- new.env(); .api_calls$timestamps <- numeric(0)
@@ -266,6 +267,7 @@ scb_rakna_arbetsstallen_i_kommuner <- function(
     returnera_till_konsol = TRUE,
     returnera_df = FALSE
 ){
+  source("https://raw.githubusercontent.com/Region-Dalarna/funktioner/main/func_API.R", encoding = "utf-8", echo = FALSE)
   base_url  <- "https://privateapi.scb.se/nv0101/v1/sokpavar/api/"
   rakna_url <- paste0(base_url, "ae/raknaarbetsstallen/")
   .api_calls <- new.env(); .api_calls$timestamps <- numeric(0)
