@@ -1,20 +1,20 @@
 # ===== ftg_arbst_api_scb_func.R =====
 
-# för att kunna använda detta skript måste ett certifikat från SCB 
-# först installeras på datorn. Certifikatet får man från SCB om man 
-# ber om det, kontaktuppgifter finns här: 
+# för att kunna använda detta skript måste ett certifikat från SCB
+# först installeras på datorn. Certifikatet får man från SCB om man
+# ber om det, kontaktuppgifter finns här:
 # https://www.scb.se/vara-tjanster/bestall-data-och-statistik/foretagsregistret/avgiftsfria-uppgifter-i-foretagsregistret/#fatillgang
 
 # Dessa skript består av två filer:
 # 1. ftg_arbst_api_scb_func.R (denna fil)
-# 2. ftg_arbst_api_scb.R 
+# 2. ftg_arbst_api_scb.R
 
 # Den senare filen source:ar in den första så det räcker att köra en source på den andra
-# Principen i denna funktionsfil är att det funktioner som börjar på "scb_" 
+# Principen i denna funktionsfil är att det funktioner som börjar på "scb_"
 # kan man använda, övriga funktioner används av skripten.
 
 # Det är välkommet att förbättra skripten, men se gärna till att de är bakåt-
-# kompatibla. SCB har aviserat att API:et ska ersättas av ett rimligare så 
+# kompatibla. SCB har aviserat att API:et ska ersättas av ett rimligare så
 # lägg inte alltför mycket tid på att förbättra detta skript. =)
 
 # Peter Möller, Region Dalarna, augusti 2025
@@ -26,7 +26,7 @@ suppressPackageStartupMessages({
   library(tidyverse)
 })
 
-# hämtar lokalisering för certifikatet, som kan ligga på LocalMachine 
+# hämtar lokalisering för certifikatet, som kan ligga på LocalMachine
 # eller CurrentUser
 scb_hamta_cert <- function() {
   parse_store <- function(cmd, store) {
@@ -63,7 +63,7 @@ scb_hamta_cert_thumb <- function() {
   cert_local     <- tryCatch(system("certutil -store My", intern = TRUE),      error = function(e) character())
   cert_rader_raw_alla <- c(cert_rader_raw, cert_local)
   if (!length(cert_rader_raw_alla)) stop("Kunde inte läsa certifikat från certutil.")
-  
+
   cert_rader <- iconv(cert_rader_raw_alla, from = "windows-1252", to = "UTF-8")
   cert_df <- tibble(rad = cert_rader) %>%
     fill(rad, .direction = "down") %>%
@@ -75,7 +75,7 @@ scb_hamta_cert_thumb <- function() {
     filter(!is.na(thumb)) %>%
     select(cert_namn, thumb) %>%
     filter(str_detect(tolower(cert_namn), "scb"), str_detect(tolower(cert_namn), "sokpavar"))
-  
+
   if (!nrow(cert_df)) stop("Hittade inget SCB-sökpåver-certifikat i Windows certifikatförråd.")
   cert_df$thumb[[1]]
 }
@@ -90,7 +90,7 @@ api_posta <- function(url, body, cert_thumb, .api_calls_env, visa_progress = TRU
     Sys.sleep(wait_time)
   }
   .api_calls_env$timestamps <- c(.api_calls_env$timestamps, as.numeric(Sys.time()))
-  
+
   httr::POST(
     url,
     add_headers(`Content-Type`="application/json", Accept="application/json"),
@@ -166,17 +166,17 @@ scb_kategorier_med_kodtabeller <- function(
     tabell = "foretag",         # "foretag"  eller "arbetsstalle"
     med_varden = TRUE,          # TRUE = variabler med värden, FALSE = bara variabler
     cert_thumb = scb_hamta_cert_thumb()) {
-  
+
   del <- if_else(tolower(tabell) %in% c("ftg", "foretag", "företag"), "Je", "Ae")
   base_url <- "https://privateapi.scb.se/nv0101/v1/sokpavar/api/"
   url <- paste0(base_url, del, "/KategorierMedKodtabeller")
-  
+
   r <- GET(url,
            config = config(sslcert = paste0(cert_info$store, "\\MY\\", cert_thumb),
                            sslcerttype = "Schannel"))
   stop_for_status(r)
   kats <- content(r, as = "parsed", encoding = "UTF-8")
-  
+
   # Platta ut: en rad per (kategori, kod)
   retur_df <- tibble(
     kategori_id = map_chr(kats, ~ .x$Id_Kategori_JE %||% .x$Id_Kategori_AE %||% .x$Id_Kategori %||% .x$Id),
@@ -190,12 +190,12 @@ scb_kategorier_med_kodtabeller <- function(
       text = map_chr(varde_lista, ~ as.character(.x$Text  %||% .x$Beskrivning %||% NA_character_))
     ) |>
     select(-varde_lista)
-  
+
   if (!med_varden) {
-    retur_df <- retur_df %>% 
-      group_by(kategori_id) %>% 
+    retur_df <- retur_df %>%
+      group_by(kategori_id) %>%
       summarise(antal_unika_varden = n(), .groups = "drop")
-  } 
+  }
   return(retur_df)
 }
 
@@ -203,7 +203,7 @@ scb_kategorier_med_kodtabeller <- function(
 # # Alla kategorier för företag med kodtabeller
 # ftg_kat_varden <- scb_kategorier_med_kodtabeller("foretag")
 # ftg_bara_kat <- scb_kategorier_med_kodtabeller("foretag", med_varden = FALSE)
- 
+
 # # Alla kategorier för arbetsställen med kodtabeller
 # arbst_kat_varden <- scb_kategorier_med_kodtabeller("arbetsstalle")
 # arbst_bara_kat <- scb_kategorier_med_kodtabeller("arbetsstalle", med_varden = FALSE)
@@ -242,7 +242,7 @@ scb_rakna_foretag_i_kommuner <- function(
   base_url  <- "https://privateapi.scb.se/nv0101/v1/sokpavar/api/"
   rakna_url <- paste0(base_url, "je/raknaforetag/")
   .api_calls <- new.env(); .api_calls$timestamps <- numeric(0)
-  
+
   retur_df <- map_dfr(kommunkoder, function(kom){
     payload <- api_bygg_payload(
       kategori_lista = list(list(Kategori = "SätesKommun", Kod = list(kom))),
@@ -258,7 +258,7 @@ scb_rakna_foretag_i_kommuner <- function(
   if (returnera_df) return(retur_df)
 }
 
-scb_rakna_arbetsstallen_per_kommun <- function(
+scb_rakna_arbetsstallen_i_kommuner <- function(
     kommunkoder,
     arbetsstallestatus = "1",           # NULL = alla; eller vektor
     extra_kategorier = NULL,            # t.ex. list(list(Kategori="2-siffrig bransch 1", Kod=c("10","11")))
@@ -269,7 +269,7 @@ scb_rakna_arbetsstallen_per_kommun <- function(
   base_url  <- "https://privateapi.scb.se/nv0101/v1/sokpavar/api/"
   rakna_url <- paste0(base_url, "ae/raknaarbetsstallen/")
   .api_calls <- new.env(); .api_calls$timestamps <- numeric(0)
-  
+
   retur_df <- map_dfr(kommunkoder, function(kom){
     payload <- api_bygg_payload(
       kategori_lista = list(list(Kategori = "Kommun", Kod = list(kom))),
