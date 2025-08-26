@@ -3,7 +3,7 @@ source("https://raw.githubusercontent.com/Analytikernatverket/hamta_data/refs/he
 scb_hamta_foretag <- function(
     kommunkoder = NULL,                          # kommunkoder för de kommuner man vill ha data för, en eller flera i en vektor, tex: c("2080", "2085")
     grundfilter = list(),                        # möjlighet att skicka med fler variabler för filtrering, görs i form av en namngiven list, tex. list(list(Kategori="SätesKommun", Kod=list("2080")), ...)
-    juridisk_kod = c("10", "31", "49"),          # default är c("10", "31", "49") som är fysiska personer (enskilda firmor), Handelsbolag/kommanditbolag samt Övriga aktiebolag
+    juridisk_kod = NULL,                         # default är alla företag, ange juridisk_kod = c("10", "31", "49") för fysiska personer (enskilda firmor), Handelsbolag/kommanditbolag samt Övriga aktiebolag
     oms_klass = NULL,                            # default är NULL = alla omsättningsklasser - använd scb_kategorier_med_kodtabeller("foretag") för att se vilka värden som finns
     branscher = NULL,                            # default är NULL = alla branscher - använd scb_kategorier_med_kodtabeller("foretag") för att se vilka värden som finns
     vald_foretagsstatus = "1",                   # default är 1 = är verksam (finns också 0 = har aldrig varit verksam och 9 = är ej längre verksam)
