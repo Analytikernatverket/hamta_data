@@ -4,7 +4,8 @@ hamta_skolenheter_api_skolverket <- function(
     region_vekt = NA,            # NA = hela landet, länskoder = hämtar alla kommuner i det länet, går att skicka både länskoder och kommunkoder
     skolstatus = "AKTIV",        # finns: "AKTIV", "VILANDE", "UPPHORT", "PLANERAD"
     geografi = "sweref99",       # NA = dataframe returneras, finns: NA, "sweref" och "wgs84"
-    listkolumner_till_strang_avdelare = "<br>"     # NA = listkolumnerna lämnas orörda. Kan ställa till det i mapview(). Om man då istället vill ha gymnasieprogrammen i en sträng med ett gymnasieprogram per rad så kan "<br>" med fördel användas, eller ", " om man vill ha alla gymnasieprogram, koder, skolformer och årskurser på en rad åtskilda av ett komma
+    listkolumner_till_strang_avdelare = ", "     # NA = listkolumnerna lämnas orörda. Kan ställa till det i mapview() eller i en databas. Om man då istället vill ha gymnasieprogrammen i en sträng med ett gymnasieprogram per rad så kan "<br>" med fördel användas, eller ", " om man vill ha alla gymnasieprogram, koder, skolformer och årskurser på en rad åtskilda av ett komma
+                                                   # "<br>" = funkar bra med mapview, ", " funkar bra för att spara som databas
   ) {
 
   # Installera nödvändiga paket om de inte redan är installerade.
