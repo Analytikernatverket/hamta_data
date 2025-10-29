@@ -1,6 +1,6 @@
 
 
-hamta_laddstationer_nobil <- function() {
+hamta_laddstationer_nobil <- function(returnera_sf = TRUE) {
   # ------------------------------------------------------------------------------
   # Hämtar laddstationsdata från NOBIL API (Sverige)
   #
@@ -34,8 +34,6 @@ hamta_laddstationer_nobil <- function() {
   # ------------------------------------------------------------------------------
   
   
-  
-  
   # Kontrollera att keyring är installerat ------------------------------
   if (!requireNamespace("keyring", quietly = TRUE)) {
     stop("Paketet 'keyring' är inte installerat. Installera det med install.packages('keyring').")
@@ -48,11 +46,10 @@ hamta_laddstationer_nobil <- function() {
     stop("Ingen tjänst med namnet 'nobil_laddstationer' hittades i keyring. Du måste ha ett API från Nobil som du kan få kostnadsfritt här: https://info.nobil.no/api. Lägg in användare och API-nyckel som service 'nobil_laddstationer' i keyring-paketet så kommer detta skript att fungera.")
   }
   
-  library(httr)
-  library(jsonlite)
-  library(keyring)
-  
-  
+  if (!require("pacman")) install.packages("pacman")
+  p_load(httr,
+         jsonlite,
+         keyring)
   
   laddst_sv <- GET(paste0("https://nobil.no/api/server/datadump.php?apikey=", 
                           key_get("nobil_laddstationer", key_list(service = "nobil_laddstationer")$username), 
@@ -65,8 +62,9 @@ hamta_laddstationer_nobil <- function() {
   laddst_sv_df$Position <- gsub("[()]", "", as.character(laddst_sv_df$Position))
   
   #splitta kolumnen position
-  laddstolpar <- laddst_sv_df %>% separate_wider_delim(Position, ",", names = c("lat", "lon")) #WGS84 Decimal (lat, lon)
-  laddstolpar_sf = st_as_sf(laddstolpar, coords = c("lon", "lat"), 
+  laddstolpar_sf <- laddst_sv_df %>% separate_wider_delim(Position, ",", names = c("lat", "lon")) #WGS84 Decimal (lat, lon)
+  
+  laddstolpar_sf = st_as_sf(laddstolpar_sf, coords = c("lon", "lat"), 
                             crs = 4326, agr = "constant") %>% 
     st_transform(crs = 3006)
   
