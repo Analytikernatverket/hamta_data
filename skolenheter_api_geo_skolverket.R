@@ -21,7 +21,7 @@ hamta_skolenheter_api_skolverket <- function(
 
   api_hamta_json <- possibly(function(url) {
     resp <- GET(url); stop_for_status(resp)
-    fromJSON(content(resp, as = "text", encoding = "UTF-8"), flatten = TRUE)
+    fromJSON(httr::content(resp, as = "text", encoding = "UTF-8"), flatten = TRUE)
   }, otherwise = NULL)
 
   # används för att lägga på klartext på skolformskoderna (har inte hittat nyckel så listat ut själv, inte 100 % säkert att de stämmer)
