@@ -79,12 +79,13 @@ hamta_skolenheter_api_skolverket <- function(
 
   # ====== hämta kommunkoder och kontrollera giltighet ============
 
+  kommunnyckel <- hamtaregtab() %>%                              # hämta alla kommunkoder
+    filter(nchar(regionkod) == 4) %>%
+    rename(Kommun = region,
+           Kommunkod = regionkod)
+  
   if (!is.na(region_vekt)) {
-    kommunnyckel <- hamtaregtab() %>%                              # hämta alla kommunkoder
-      filter(nchar(regionkod) == 4) %>%
-      rename(Kommun = region,
-             Kommunkod = regionkod)
-
+    
     region_kommuner <- region_vekt[nchar(region_vekt) == 4]            # lägg alla kommunkoder i en vektor
     region_lan <- region_vekt[nchar(region_vekt) == 2]                 # lägg alla länskoder i en vektor
     kommunkoder <- hamtakommuner(region_lan, F, F) %>%                 # hämta alla kommuner som finns i län med länskod
