@@ -44,7 +44,7 @@ scb_hamta_cert <- function() {
       filter(!is.na(thumb)) |>
       mutate(subject_lc = tolower(subject), issuer_lc = tolower(issuer)) |>
       # matcha: CN innehåller sokpavar/sökpåver ELLER issuer innehåller scb
-      filter(grepl("sokpavar|sökpåver|sokpåver", subject_lc) | grepl("\\bscb\\b", issuer_lc)) |>
+      filter(grepl("sokpavar|sökpåver|sokpåver", subject_lc) & grepl("\\bscb\\b", issuer_lc)) |>
       transmute(store = store, thumb = gsub(" ", "", thumb))
     if (nrow(df)) df[1,] else NULL
   }
