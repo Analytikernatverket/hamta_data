@@ -96,7 +96,8 @@ hamta_elever_grundskola_forskoleklass_skolverket <- function(
     list_rbind() %>%
     relocate(lasar, .before = 1) %>%
     relocate(skoltyp, .after = lasar) %>%
-    relocate(huvudman, .after = skoltyp)
+    relocate(huvudman, .after = skoltyp) %>%
+    mutate(varde = suppressWarnings(varde %>% parse_number()))
 
   berakningstid <- as.numeric(Sys.time() - starttid, units = "secs") %>% round(1)         # Beräkna och skriv ut tidsåtgång
   if (meddelande_tid) cat(paste0("Dataset nedladdat på ", berakningstid, " sekunder."))
