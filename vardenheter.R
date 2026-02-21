@@ -42,9 +42,11 @@ hamta_vardtyper_lista_1177 <- function() {
 
 hamta_vardenheter_1177 <- function(
     regionkod,                            # bara tillåtet att hämta en region i taget, t.ex. "20" för Dalarna
-    vardtyp = "Alla+mottagningar"         # förvalt värde "Alla+mottagningar" som hämtar alla vårdtyper, alternativt kan man välja
+    vardtyp = "Alla mottagningar"         # förvalt värde "Alla+mottagningar" som hämtar alla vårdtyper, alternativt kan man välja
                                           # en specifik vårdtyp från listan som vardenheter_vardtyper_lista() hämtar, t.ex. "Vårdcentraler"
     ) {
+
+  starttid <- Sys.time()
 
   if (length(regionkod) > 1) {
     regionkod <- regionkod[1]
@@ -55,7 +57,7 @@ hamta_vardenheter_1177 <- function(
 
   # url till hitta vård-sidan på 1177.se
   url_1177 <- "https://www.1177.se/hitta-vard/?st=208656b8-211b-4df9-ba72-912c7e02fca7&nearby=false&s=&g=&lat=&lng=&location=&caretype=&q=&openN=&openE=&openW=&openTN=&openTE=&openTW=&ow=&es=&l=&lq="
-  url_1177 <- str_replace(url_1177, "caretype=", paste0("caretype=", vardtyp))
+  url_1177 <- str_replace(url_1177, "caretype=", paste0("caretype=", vardtyp)) %>% URLencode()
 
   html_grund <- read_html(url_1177)
   scripts <- html_elements(html_grund, "script")  %>%     # Hämta alla script-element
@@ -76,7 +78,7 @@ hamta_vardenheter_1177 <- function(
     dplyr::pull(soknamn_region)
 
   # läs in hitta vård-sidan på 1177.se
-  url_region <- url_1177 %>% str_replace("location=", paste0("location=", region_sok)) %>% URLencode()
+  url_region <- url_1177 %>% str_replace("location=", paste0("location=", URLencode(region_sok, reserved = TRUE)))
   html_1177 <- read_html(url_region)
   raw_text <- rvest::html_text(rvest::html_element(html_1177, "body"))
   total_hits <- as.integer(regmatches(raw_text, regexpr('(?<="TotalHits":)\\d+', raw_text, perl = TRUE)))
@@ -116,7 +118,9 @@ hamta_vardenheter_1177 <- function(
     list_rbind()
 
   # Hitta grupper där en rad är en delsträng av en annan
-  df <- vardenheter_df  %>% mutate(row_id = row_number(), match_group = 0L)
+  df <- vardenheter_df %>%
+    distinct() %>%
+    mutate(row_id = row_number(), match_group = 0L)
 
   headings <- df$Heading
 
@@ -170,10 +174,12 @@ hamta_vardenheter_1177 <- function(
   vardenheter_sf <- vard_med_kategori_df %>%
     filter(!is.na(Longitude)) %>%
     st_as_sf(coords = c("Longitude", "Latitude"), crs = 4326) %>%
-    st_transform(crs = 3006)
+    st_transform(crs = 3006) %>%
+    rename(Vardenhetsnamn = Heading) %>%
+    select(-plot_group)
 
-  tidstagning <- Sys.time() - starttid
-  message(sprintf("Processen skapa graf tog %s minuter att köra", Sys.time() - starttid %>% round(., 1)))
+  tid_diff <- round(as.numeric(difftime(Sys.time(), starttid, units = "secs")))
+  cat(paste0("Det tog ", tid_diff ," sekunder att hämta vårdenheterna."))
 
   return(vardenheter_sf)
 } # slut funktion
