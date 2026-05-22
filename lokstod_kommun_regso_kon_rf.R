@@ -60,7 +60,7 @@ hamta_lokstod_kommun_regso_kon_rf <- function() {
     
     return(retur_fil)
     
-  }) %>% 
+  }, .progress = TRUE) %>% 
     list_rbind()
   
   return(lokstod_df)
