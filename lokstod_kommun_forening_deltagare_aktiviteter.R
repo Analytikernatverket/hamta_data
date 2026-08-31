@@ -21,7 +21,7 @@ source("https://raw.githubusercontent.com/Region-Dalarna/funktioner/main/func_we
 #'
 #' @return Sökvägen till den nedladdade Excel-filen.
 hamta_lok_per_forening <- function(nedladdningsmapp = tempfile("lok-"),
-                                      headless = FALSE) {
+                                      headless = TRUE) {
   
   rf_url <- "https://www.rf.se/bidrag-och-stod/bidrag/historik-och-statistik-stod"
   
