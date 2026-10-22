@@ -5,6 +5,7 @@ library(httr)
 library(dplyr)
 library(readxl)
 library(stringr)
+
 source("https://raw.githubusercontent.com/Region-Dalarna/funktioner/main/func_webbskrapning.R")
 
 #' Hämta servicetabell från PIPOS/serviceanalys (tillvaxtverket.se)
